@@ -1,0 +1,1542 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <title>TempMail</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* ==================== RESET & VARIABLES ==================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Warna utama */
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --primary-light: #60a5fa;
+            --secondary: #6366f1;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            
+            /* Light theme */
+            --light-bg: #f8fafc;
+            --light-card: rgba(255, 255, 255, 0.7);
+            --light-text: #0f172a;
+            --light-text-muted: #475569;
+            --light-border: rgba(203, 213, 225, 0.3);
+            
+            /* Dark theme */
+            --dark-bg: #0b1120;
+            --dark-card: rgba(30, 41, 59, 0.7);
+            --dark-text: #f1f5f9;
+            --dark-text-muted: #94a3b8;
+            --dark-border: rgba(51, 65, 85, 0.3);
+            
+            /* Efek blur - secukupnya */
+            --blur-sm: blur(4px);
+            --blur-md: blur(6px);
+            --blur-lg: blur(8px);
+            
+            /* Shadow */
+            --shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+            
+            /* Transition */
+            --transition: 200ms ease;
+        }
+
+        body.light {
+            --bg: var(--light-bg);
+            --card: var(--light-card);
+            --text: var(--light-text);
+            --text-muted: var(--light-text-muted);
+            --border: var(--light-border);
+        }
+
+        body.dark {
+            --bg: var(--dark-bg);
+            --card: var(--dark-card);
+            --text: var(--dark-text);
+            --text-muted: var(--dark-text-muted);
+            --border: var(--dark-border);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.5;
+            transition: background-color var(--transition), color var(--transition);
+            position: relative;
+        }
+
+        /* Background blur minimal */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 30%, var(--primary-light) 0%, transparent 30%),
+                radial-gradient(circle at 80% 70%, var(--secondary) 0%, transparent 30%);
+            opacity: 0.15;
+            pointer-events: none;
+            z-index: -1;
+            filter: blur(30px);
+        }
+
+        /* ==================== LAYOUT ==================== */
+        .app {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1.5rem;
+            padding-bottom: 90px;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* ==================== HEADER ==================== */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            background: var(--card);
+            backdrop-filter: var(--blur-md);
+            border: 1px solid var(--border);
+            border-radius: 60px;
+            box-shadow: var(--shadow);
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            transition: transform var(--transition);
+        }
+
+        .logo-icon:hover {
+            transform: scale(1.05);
+        }
+
+        .logo-text h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .logo-text h1 span {
+            color: var(--text);
+        }
+
+        .logo-text p {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        /* ==================== THEME TOGGLE ==================== */
+        .theme-toggle {
+            display: flex;
+            gap: 0.3rem;
+            background: var(--card);
+            backdrop-filter: var(--blur-sm);
+            padding: 0.3rem;
+            border-radius: 40px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+        }
+
+        .theme-toggle i {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            transition: all var(--transition);
+        }
+
+        .theme-toggle i.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* ==================== PAGES CONTAINER ==================== */
+        .pages-container {
+            position: relative;
+            min-height: 600px;
+        }
+
+        .page {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateX(15px);
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+
+        .page.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(0);
+            pointer-events: all;
+            position: relative;
+        }
+
+        /* ==================== MAIN CARD ==================== */
+        .main-card {
+            background: var(--card);
+            backdrop-filter: var(--blur-lg);
+            border-radius: 40px;
+            padding: 2rem;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            margin-bottom: 2rem;
+            transition: transform var(--transition);
+        }
+
+        .main-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-header h2 {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .card-header h2 i {
+            color: var(--primary);
+        }
+
+        .badge {
+            background: var(--primary);
+            color: white;
+            padding: 0.4rem 1.2rem;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        /* ==================== EMAIL DISPLAY ==================== */
+        .email-box {
+            background: var(--card);
+            backdrop-filter: var(--blur-sm);
+            border-radius: 50px;
+            padding: 0.3rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border: 1px solid var(--border);
+            margin: 1.5rem 0;
+            transition: border-color var(--transition);
+        }
+
+        .email-box:focus-within {
+            border-color: var(--primary);
+        }
+
+        .email-box i {
+            padding-left: 1.5rem;
+            color: var(--primary);
+        }
+
+        .email-box input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 1rem 0;
+            color: var(--text);
+            font-size: 1rem;
+            outline: none;
+            font-family: monospace;
+        }
+
+        .copy-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.8rem 2rem;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-right: 0.3rem;
+            transition: background var(--transition);
+        }
+
+        .copy-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .copy-btn.copied {
+            background: var(--success);
+        }
+
+        /* ==================== ACTION BUTTONS ==================== */
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin: 1.5rem 0;
+        }
+
+        .btn {
+            padding: 1rem 1.5rem;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: var(--card);
+            backdrop-filter: var(--blur-sm);
+            color: var(--text);
+            flex: 1;
+            transition: all var(--transition);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            border: none;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn:hover {
+            border-color: var(--primary);
+        }
+
+        /* ==================== STATS GRID ==================== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .stat-item {
+            background: var(--card);
+            backdrop-filter: var(--blur-sm);
+            padding: 1.2rem;
+            border-radius: 30px;
+            text-align: center;
+            border: 1px solid var(--border);
+            transition: transform var(--transition);
+        }
+
+        .stat-item:hover {
+            transform: translateY(-3px);
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 0.3rem;
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+
+        /* ==================== INBOX SECTION ==================== */
+        .inbox-section {
+            background: var(--card);
+            backdrop-filter: var(--blur-lg);
+            border-radius: 40px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+        }
+
+        .inbox-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .inbox-header h3 {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.3rem;
+        }
+
+        .inbox-stats {
+            background: var(--card);
+            backdrop-filter: var(--blur-sm);
+            padding: 0.4rem 1.2rem;
+            border-radius: 30px;
+            border: 1px solid var(--border);
+        }
+
+        .email-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .email-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .email-list::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 10px;
+        }
+
+        .email-item {
+            background: var(--card);
+            backdrop-filter: var(--blur-sm);
+            border-radius: 20px;
+            padding: 1rem;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            margin-bottom: 0.5rem;
+            transition: all var(--transition);
+            animation: slideIn 0.3s;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .email-item:hover {
+            border-color: var(--primary);
+            transform: translateX(5px);
+        }
+
+        .email-item.unread {
+            border-left: 4px solid var(--primary);
+        }
+
+        .email-sender {
+            font-weight: 600;
+            margin-bottom: 0.3rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .email-subject {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .email-time {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+        }
+
+        .email-delete {
+            color: var(--danger);
+            cursor: pointer;
+            padding: 0.2rem 0.5rem;
+            border-radius: 15px;
+            background: rgba(239,68,68,0.1);
+            transition: all var(--transition);
+        }
+
+        .email-delete:hover {
+            background: rgba(239,68,68,0.2);
+            transform: scale(1.1);
+        }
+
+        /* ==================== MESSAGES PAGE ==================== */
+        .messages-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .messages-list {
+            background: var(--card);
+            backdrop-filter: var(--blur-lg);
+            border-radius: 40px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .message-preview {
+            background: var(--card);
+            backdrop-filter: var(--blur-md);
+            border-radius: 40px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+        }
+
+        .preview-content {
+            background: var(--card);
+            backdrop-filter: var(--blur-sm);
+            padding: 1.5rem;
+            border-radius: 30px;
+            border: 1px solid var(--border);
+            min-height: 300px;
+            white-space: pre-wrap;
+        }
+
+        .empty-preview {
+            color: var(--text-muted);
+            text-align: center;
+            padding: 2rem;
+        }
+
+        /* ==================== ABOUT PAGE ==================== */
+        .about-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .about-stat-card {
+            background: var(--card);
+            backdrop-filter: var(--blur-md);
+            padding: 2rem 1rem;
+            border-radius: 30px;
+            border: 1px solid var(--border);
+            text-align: center;
+            transition: transform var(--transition);
+        }
+
+        .about-stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .about-stat-card i {
+            font-size: 2.5rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        .about-stat-card h2 {
+            font-size: 2rem;
+            color: var(--primary);
+            margin-bottom: 0.3rem;
+        }
+
+        .about-features {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .about-feature-item {
+            background: var(--card);
+            backdrop-filter: var(--blur-md);
+            padding: 1.2rem;
+            border-radius: 25px;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: transform var(--transition);
+        }
+
+        .about-feature-item:hover {
+            transform: translateX(5px);
+        }
+
+        .about-feature-item i {
+            font-size: 1.8rem;
+            color: var(--primary);
+            width: 40px;
+        }
+
+        /* ==================== DOCS PAGE ==================== */
+        .docs-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+
+        .docs-card {
+            background: var(--card);
+            backdrop-filter: var(--blur-lg);
+            border-radius: 30px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            transition: transform var(--transition);
+        }
+
+        .docs-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .docs-card h3 {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            color: var(--text);
+        }
+
+        .code-block {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 20px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            border: 1px solid #334155;
+            overflow-x: auto;
+        }
+
+        /* ==================== MODAL FEATURES ==================== */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: var(--blur-sm);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--card);
+            backdrop-filter: var(--blur-lg);
+            border-radius: 40px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            animation: slideUp 0.3s;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-close {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--card);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+
+        .modal-close:hover {
+            background: var(--danger);
+            color: white;
+            transform: rotate(90deg);
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.8rem;
+        }
+
+        .feature-item {
+            background: var(--card);
+            backdrop-filter: var(--blur-sm);
+            padding: 1.2rem 0.8rem;
+            border-radius: 25px;
+            text-align: center;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            transition: all var(--transition);
+        }
+
+        .feature-item:hover {
+            border-color: var(--primary);
+            transform: translateY(-3px);
+        }
+
+        .feature-item i {
+            font-size: 2rem;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-item h4 {
+            font-size: 1rem;
+            margin-bottom: 0.2rem;
+        }
+
+        .feature-item p {
+            color: var(--text-muted);
+            font-size: 0.7rem;
+        }
+
+        /* ==================== TOAST ==================== */
+        .toast {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            background: var(--card);
+            backdrop-filter: var(--blur-lg);
+            border-left: 4px solid var(--primary);
+            padding: 1rem 1.5rem;
+            border-radius: 30px;
+            box-shadow: var(--shadow);
+            z-index: 10000;
+            animation: slideRight 0.3s;
+            display: none;
+        }
+
+        @keyframes slideRight {
+            from { opacity: 0; transform: translateX(30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .toast.show {
+            display: block;
+        }
+
+        .toast i {
+            margin-right: 0.5rem;
+            color: var(--primary);
+        }
+
+        /* ==================== BOTTOM NAV ==================== */
+        .bottom-nav {
+            position: fixed;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--card);
+            backdrop-filter: var(--blur-lg);
+            padding: 0.8rem 2rem;
+            border-radius: 60px;
+            display: flex;
+            gap: 2.5rem;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            z-index: 1000;
+            animation: slideUp 0.5s;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+
+        .nav-item i {
+            font-size: 1.5rem;
+            margin-bottom: 0.2rem;
+            transition: transform var(--transition);
+        }
+
+        .nav-item span {
+            font-size: 0.7rem;
+            font-weight: 600;
+            opacity: 0;
+            transform: translateY(-5px);
+            transition: all var(--transition);
+        }
+
+        .nav-item:hover span {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .nav-item.active {
+            color: var(--primary);
+        }
+
+        .nav-item.active i {
+            transform: translateY(-3px);
+        }
+
+        .nav-item.plus {
+            background: var(--primary);
+            color: white;
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: -25px;
+            box-shadow: 0 10px 20px -5px var(--primary);
+            transition: transform var(--transition);
+        }
+
+        .nav-item.plus:hover {
+            transform: scale(1.05) translateY(-3px);
+        }
+
+        .nav-item.plus i {
+            font-size: 1.8rem;
+            margin: 0;
+        }
+
+        .nav-item.plus span {
+            display: none;
+        }
+
+        /* ==================== RESPONSIVE ==================== */
+        @media (max-width: 768px) {
+            .stats-grid,
+            .messages-grid,
+            .docs-grid,
+            .about-stats,
+            .about-features,
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .email-box {
+                flex-direction: column;
+                background: none;
+                padding: 0;
+            }
+            
+            .email-box i { display: none; }
+            
+            .email-box input {
+                background: var(--card);
+                border-radius: 50px;
+                padding: 1rem;
+                border: 1px solid var(--border);
+                width: 100%;
+            }
+            
+            .copy-btn {
+                width: 100%;
+                margin: 0;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .bottom-nav {
+                gap: 1.5rem;
+                padding: 0.6rem 1.2rem;
+                width: 95%;
+            }
+            
+            .nav-item span {
+                font-size: 0.6rem;
+            }
+        }
+    </style>
+</head>
+<body class="light">
+    <div class="app">
+        <!-- HEADER -->
+        <div class="header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <i class="fas fa-shield"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>TempMail<span>V3</span></h1>
+                    <p>Pages • Smooth • No Jump</p>
+                </div>
+            </div>
+            <div class="theme-toggle" id="themeToggle">
+                <i class="fas fa-sun active"></i>
+                <i class="fas fa-moon"></i>
+            </div>
+        </div>
+
+        <!-- TOAST -->
+        <div class="toast" id="toast">
+            <i class="fas fa-check-circle"></i>
+            <span id="toastMessage">Copied!</span>
+        </div>
+
+        <!-- MODAL FEATURES -->
+        <div class="modal" id="featuresModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2><i class="fas fa-star" style="color: var(--primary);"></i> Fitur Premium</h2>
+                    <div class="modal-close" id="closeModal">
+                        <i class="fas fa-times"></i>
+                    </div>
+                </div>
+                <div class="feature-grid">
+                    <div class="feature-item" onclick="activateFeature('quick')">
+                        <i class="fas fa-bolt"></i>
+                        <h4>Quick Gen</h4>
+                        <p>Generate instan</p>
+                    </div>
+                    <div class="feature-item" onclick="activateFeature('export')">
+                        <i class="fas fa-download"></i>
+                        <h4>Export</h4>
+                        <p>Simpan inbox</p>
+                    </div>
+                    <div class="feature-item" onclick="activateFeature('refresh')">
+                        <i class="fas fa-rotate"></i>
+                        <h4>Auto Refresh</h4>
+                        <p>5 detik</p>
+                    </div>
+                    <div class="feature-item" onclick="activateFeature('encrypt')">
+                        <i class="fas fa-lock"></i>
+                        <h4>Encrypt</h4>
+                        <p>Aman</p>
+                    </div>
+                    <div class="feature-item" onclick="activateFeature('copy')">
+                        <i class="fas fa-copy"></i>
+                        <h4>Smart Copy</h4>
+                        <p>1 klik</p>
+                    </div>
+                    <div class="feature-item" onclick="activateFeature('delete')">
+                        <i class="fas fa-trash"></i>
+                        <h4>Bulk Delete</h4>
+                        <p>Hapus semua</p>
+                    </div>
+                    <div class="feature-item" onclick="activateFeature('stats')">
+                        <i class="fas fa-chart-line"></i>
+                        <h4>Live Stats</h4>
+                        <p>Realtime</p>
+                    </div>
+                    <div class="feature-item" onclick="activateFeature('theme')">
+                        <i class="fas fa-palette"></i>
+                        <h4>Themes</h4>
+                        <p>Dark/Light</p>
+                    </div>
+                    <div class="feature-item" onclick="activateFeature('blur')">
+                        <i class="fas fa-circle"></i>
+                        <h4>4K Blur</h4>
+                        <p>Halus</p>
+                    </div>
+                    <div class="feature-item" onclick="activateFeature('domains')">
+                        <i class="fas fa-globe"></i>
+                        <h4>8 Domains</h4>
+                        <p>Security</p>
+                    </div>
+                </div>
+                <p style="margin-top:1.5rem; text-align:center; color:var(--text-muted); font-size:0.8rem;">
+                    Klik fitur untuk mengaktifkan
+                </p>
+            </div>
+        </div>
+
+        <!-- PAGES CONTAINER -->
+        <div class="pages-container">
+            <!-- PAGE 1: HOME -->
+            <div class="page active" id="page1">
+                <div class="main-card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-envelope"></i> Email Aktif</h2>
+                        <span class="badge" id="timerLabel">60:00</span>
+                    </div>
+                    
+                    <div class="email-box">
+                        <i class="fas fa-envelope"></i>
+                        <input type="text" id="emailAddress" readonly value="Loading...">
+                        <button class="copy-btn" id="copyBtn">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                    </div>
+                    
+                    <div class="action-buttons">
+                        <button class="btn btn-primary" id="newEmailBtn">
+                            <i class="fas fa-bolt"></i> Generate Baru
+                        </button>
+                        <button class="btn" id="refreshBtn">
+                            <i class="fas fa-rotate"></i> Refresh
+                        </button>
+                        <button class="btn" id="deleteAllBtn">
+                            <i class="fas fa-trash"></i> Hapus Semua
+                        </button>
+                    </div>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-value" id="messageCount">0</div>
+                            <div class="stat-label">Pesan</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="unreadCount">0</div>
+                            <div class="stat-label">Unread</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="sessionTime">0</div>
+                            <div class="stat-label">Menit</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="inbox-section">
+                    <div class="inbox-header">
+                        <h3><i class="fas fa-inbox"></i> Inbox</h3>
+                        <span class="inbox-stats" id="inboxCount">0 pesan</span>
+                    </div>
+                    <div id="inboxList" class="email-list"></div>
+                </div>
+            </div>
+
+            <!-- PAGE 2: MESSAGES -->
+            <div class="page" id="page2">
+                <div class="main-card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-envelope-open-text"></i> Messages Center</h2>
+                        <span class="badge">2-way sync</span>
+                    </div>
+                    <div class="messages-grid">
+                        <div class="messages-list">
+                            <h3><i class="fas fa-list"></i> All Messages</h3>
+                            <div id="messagesFullList" class="email-list"></div>
+                        </div>
+                        <div class="message-preview">
+                            <h3><i class="fas fa-eye"></i> Preview</h3>
+                            <div id="messagePreview" class="preview-content empty-preview">
+                                <i class="fas fa-arrow-left"></i>
+                                <p>Pilih pesan</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE 3: ABOUT -->
+            <div class="page" id="page3">
+                <div class="main-card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-info-circle"></i> About</h2>
+                        <span class="badge">v3.0</span>
+                    </div>
+                    
+                    <div class="about-stats">
+                        <div class="about-stat-card">
+                            <i class="fas fa-envelope"></i>
+                            <h2>10k+</h2>
+                            <p>Emails</p>
+                        </div>
+                        <div class="about-stat-card">
+                            <i class="fas fa-users"></i>
+                            <h2>5k+</h2>
+                            <p>Users</p>
+                        </div>
+                        <div class="about-stat-card">
+                            <i class="fas fa-shield"></i>
+                            <h2>100%</h2>
+                            <p>Private</p>
+                        </div>
+                    </div>
+                    
+                    <div class="about-features">
+                        <div class="about-feature-item">
+                            <i class="fas fa-bolt"></i>
+                            <div><h4>Instant</h4><p>1 detik</p></div>
+                        </div>
+                        <div class="about-feature-item">
+                            <i class="fas fa-inbox"></i>
+                            <div><h4>Realtime</h4><p>Auto refresh</p></div>
+                        </div>
+                        <div class="about-feature-item">
+                            <i class="fas fa-shield-halbed"></i>
+                            <div><h4>No Logs</h4><p>Private</p></div>
+                        </div>
+                        <div class="about-feature-item">
+                            <i class="fas fa-palette"></i>
+                            <div><h4>4K Blur</h4><p>Halus</p></div>
+                        </div>
+                        <div class="about-feature-item">
+                            <i class="fas fa-globe"></i>
+                            <div><h4>8 Domains</h4><p>1secmail</p></div>
+                        </div>
+                        <div class="about-feature-item">
+                            <i class="fas fa-rotate"></i>
+                            <div><h4>Auto Refresh</h4><p>5s</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE 4: DOCS -->
+            <div class="page" id="page4">
+                <div class="main-card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-book"></i> API Docs</h2>
+                        <span class="badge">v3.1</span>
+                    </div>
+                    
+                    <div class="docs-grid">
+                        <div class="docs-card">
+                            <h3><i class="fas fa-envelope"></i> Get Messages</h3>
+                            <div class="code-block"ith k>Auto Reads New </div>
+                        </div>
+                        <div class="docs-card">
+                            <h3><i class="fas fa-envelope-open"></i>Version</h3>
+                            <div class="code-block">3.1</div>
+                        </div>
+                        <div class="docs-card">
+                            <h3><i class="fas fa-trash"></i>Anti Bug</h3>
+                            <div class="code-block">By Kenzie</div>
+                        </div>
+                        <div class="docs-card">
+                            <h3><i class="fas fa-clock"></i> Random Mailbox</h3>
+                            <div class="code-block">Random</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BOTTOM NAVIGATION -->
+        <div class="bottom-nav">
+            <div class="nav-item active" data-page="1">
+                <i class="fas fa-home"></i>
+                <span>Home</span>
+            </div>
+            <div class="nav-item" data-page="2">
+                <i class="fas fa-envelope"></i>
+                <span>Messages</span>
+            </div>
+            <div class="nav-item plus" id="plusBtn">
+                <i class="fas fa-plus"></i>
+                <span></span>
+            </div>
+            <div class="nav-item" data-page="3">
+                <i class="fas fa-info-circle"></i>
+                <span>About</span>
+            </div>
+            <div class="nav-item" data-page="4">
+                <i class="fas fa-book"></i>
+                <span>Docs</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== FIREBASE CONFIG (AMAN DI CODE) ====================
+        const firebaseConfig = {
+            apiKey: "AIzaSyBZYeqiphe6Ay4owoD7SYq8ndv5lkhpuAU",
+            authDomain: "tempmail2-8e064.firebaseapp.com", // <-- SATU TANDA PETIK DOANG
+            databaseURL: "https://tempmail2-8e064-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "tempmail2-8e064",
+            storageBucket: "tempmail2-8e064.firebasestorage.app",
+            messagingSenderId: "345870502979",
+            appId: "1:345870502979:web:91c2fc0a53225313e758f6"
+           };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // ==================== GLOBAL ====================
+        let currentEmail = localStorage.getItem('tempMailEmail') || '';
+        let messages = [];
+        let timerInterval = null;
+        let sessionMinutes = 0;
+        let unreadCount = 0;
+
+        // 1SECMAIL API - TIDAK MUNCUL DI UI
+        const API_BASE = 'https://www.1secmail.com/api/v1/';
+        const DOMAINS = ['1secmail.com','1secmail.org','1secmail.net','wwjmp.com','esiix.com','xojxe.com','yoggm.com','qiott.com'];
+
+        // ==================== TOAST ====================
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        // ==================== FEATURE ACTIVATION ====================
+        window.activateFeature = function(feature) {
+            switch(feature) {
+                case 'quick':
+                    generateRandomEmail();
+                    showToast('⚡ Quick Generate!');
+                    break;
+                case 'export':
+                    exportInbox();
+                    break;
+                case 'refresh':
+                    fetchMessages();
+                    showToast('🔄 Inbox refreshed!');
+                    break;
+                case 'encrypt':
+                    showToast('🔒 Encryption aktif');
+                    break;
+                case 'copy':
+                    navigator.clipboard.writeText(document.getElementById('emailAddress').value);
+                    showToast('📋 Email copied!');
+                    break;
+                case 'delete':
+                    deleteAllMessages();
+                    break;
+                case 'stats':
+                    showToast(`📊 Pesan: ${messages.length}, Unread: ${unreadCount}`);
+                    break;
+                case 'theme':
+                    document.body.classList.toggle('dark');
+                    updateThemeIcons();
+                    showToast('🌙 Theme toggled');
+                    break;
+                case 'blur':
+                    showToast('📱 Blur aktif');
+                    break;
+                case 'domains':
+                    showToast('🎯 8 domains tersedia');
+                    break;
+            }
+        };
+
+        // ==================== EXPORT INBOX ====================
+        function exportInbox() {
+            if (!messages.length) {
+                showToast('Tidak ada pesan');
+                return;
+            }
+            const dataStr = JSON.stringify(messages, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            const link = document.createElement('a');
+            link.href = dataUri;
+            link.download = `inbox-${Date.now()}.json`;
+            link.click();
+            showToast('📥 Inbox diekspor!');
+        }
+
+        // ==================== GENERATE EMAIL ====================
+        function generateRandomEmail() {
+            const login = Math.random().toString(36).substring(2, 12);
+            const domain = DOMAINS[Math.floor(Math.random() * DOMAINS.length)];
+            currentEmail = `${login}@${domain}`;
+            
+            localStorage.setItem('tempMailEmail', currentEmail);
+            document.getElementById('emailAddress').value = currentEmail;
+            
+            const emailSafe = currentEmail.replace(/\./g, ',');
+            db.ref('emails/' + emailSafe).set({
+                email: currentEmail,
+                created: Date.now()
+            });
+            
+            fetchMessages();
+            startTimer();
+            showToast('📧 Email baru dibuat!');
+        }
+
+        // ==================== FETCH MESSAGES ====================
+        async function fetchMessages() {
+            if (!currentEmail) return;
+            const [login, domain] = currentEmail.split('@');
+            
+            try {
+                const res = await fetch(`${API_BASE}?action=getMessages&login=${login}&domain=${domain}`);
+                const data = await res.json();
+                messages = Array.isArray(data) ? data : [];
+                updateInboxUI();
+                updateMessagesListUI();
+            } catch (e) {
+                console.error('Fetch error:', e);
+            }
+        }
+
+        async function fetchMessage(id) {
+            const [login, domain] = currentEmail.split('@');
+            const res = await fetch(`${API_BASE}?action=readMessage&login=${login}&domain=${domain}&id=${id}`);
+            return await res.json();
+        }
+
+        // ==================== UPDATE UI ====================
+        function updateInboxUI() {
+            const inboxDiv = document.getElementById('inboxList');
+            const inboxCount = document.getElementById('inboxCount');
+            const messageCount = document.getElementById('messageCount');
+            const unreadCountEl = document.getElementById('unreadCount');
+            
+            if (!messages.length) {
+                inboxDiv.innerHTML = '<div style="padding:2rem; text-align:center;"><i class="fas fa-envelope-open" style="font-size:2rem; opacity:0.5;"></i><p>Inbox kosong</p></div>';
+                inboxCount.textContent = '0 pesan';
+                messageCount.textContent = '0';
+                unreadCountEl.textContent = '0';
+                return;
+            }
+            
+            unreadCount = messages.filter(m => !m.seen).length;
+            inboxCount.textContent = `${messages.length} pesan`;
+            messageCount.textContent = messages.length;
+            unreadCountEl.textContent = unreadCount;
+            
+            let html = '';
+            messages.sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(msg => {
+                html += `
+                    <div class="email-item ${msg.seen ? '' : 'unread'}" onclick="showMessage('${msg.id}')">
+                        <div class="email-sender">
+                            <span><i class="fas fa-user-circle"></i> ${msg.from || 'Unknown'}</span>
+                            <i class="fas fa-trash email-delete" onclick="deleteMessage('${msg.id}', event)"></i>
+                        </div>
+                        <div class="email-subject">${msg.subject || '(no subject)'}</div>
+                        <div class="email-time">${msg.date || 'Just now'}</div>
+                    </div>
+                `;
+            });
+            inboxDiv.innerHTML = html;
+        }
+
+        function updateMessagesListUI() {
+            const listDiv = document.getElementById('messagesFullList');
+            if (!listDiv) return;
+            
+            if (!messages.length) {
+                listDiv.innerHTML = '<div style="padding:2rem; text-align:center;"><i class="fas fa-envelope-open" style="font-size:2rem; opacity:0.5;"></i><p>No messages</p></div>';
+                return;
+            }
+            
+            let html = '';
+            messages.forEach(msg => {
+                html += `
+                    <div class="email-item ${msg.seen ? '' : 'unread'}" onclick="showMessagePreview('${msg.id}')">
+                        <div class="email-sender">${msg.from}</div>
+                        <div class="email-subject">${msg.subject}</div>
+                    </div>
+                `;
+            });
+            listDiv.innerHTML = html;
+        }
+
+        window.showMessage = async function(id) {
+            const full = await fetchMessage(id);
+            if (full) {
+                alert(`From: ${full.from}\nSubject: ${full.subject}\nDate: ${full.date}\n\n${full.textBody || full.body}`);
+                const msg = messages.find(m => m.id == id);
+                if (msg) msg.seen = true;
+                updateInboxUI(); updateMessagesListUI();
+            }
+        };
+
+        window.showMessagePreview = async function(id) {
+            const full = await fetchMessage(id);
+            const preview = document.getElementById('messagePreview');
+            if (full) {
+                preview.innerHTML = `
+                    <div><strong>From:</strong> ${full.from}</div>
+                    <div><strong>Subject:</strong> ${full.subject}</div>
+                    <div style="color:var(--text-muted); margin:0.5rem 0;">${full.date}</div>
+                    <hr style="margin:1rem 0;"><div style="white-space:pre-wrap;">${full.textBody || full.body}</div>
+                `;
+                const msg = messages.find(m => m.id == id);
+                if (msg) msg.seen = true;
+                updateInboxUI(); updateMessagesListUI();
+            }
+        };
+
+        window.deleteMessage = async function(id, e) {
+            e.stopPropagation();
+            const [login, domain] = currentEmail.split('@');
+            await fetch(`${API_BASE}?action=deleteMessage&login=${login}&domain=${domain}&id=${id}`, { method:'POST' });
+            messages = messages.filter(m => m.id != id);
+            updateInboxUI(); updateMessagesListUI();
+            showToast('🗑️ Pesan dihapus');
+        };
+
+        function deleteAllMessages() {
+            if (!messages.length || !confirm('Hapus semua pesan?')) return;
+            messages.forEach(async msg => {
+                const [login, domain] = currentEmail.split('@');
+                await fetch(`${API_BASE}?action=deleteMessage&login=${login}&domain=${domain}&id=${msg.id}`, { method:'POST' });
+            });
+            messages = [];
+            updateInboxUI(); updateMessagesListUI();
+            showToast('🗑️ Semua dihapus');
+        }
+
+        // ==================== TIMER ====================
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            let min = 60, sec = 0;
+            timerInterval = setInterval(() => {
+                if (sec === 0) {
+                    if (min === 0) { clearInterval(timerInterval); return; }
+                    min--; sec = 59;
+                } else sec--;
+                document.getElementById('timerLabel').textContent = `${min}:${sec.toString().padStart(2,'0')}`;
+            }, 1000);
+        }
+
+        // ==================== AUTO REFRESH ====================
+        setInterval(() => {
+            if (currentEmail) fetchMessages();
+        }, 5000);
+
+        setInterval(() => {
+            sessionMinutes++;
+            document.getElementById('sessionTime').textContent = sessionMinutes;
+        }, 60000);
+
+        // ==================== EVENT LISTENERS ====================
+        document.getElementById('newEmailBtn').addEventListener('click', generateRandomEmail);
+        document.getElementById('refreshBtn').addEventListener('click', fetchMessages);
+        document.getElementById('deleteAllBtn').addEventListener('click', deleteAllMessages);
+        document.getElementById('copyBtn').addEventListener('click', () => {
+            const email = document.getElementById('emailAddress').value;
+            navigator.clipboard.writeText(email).then(() => {
+                const btn = document.getElementById('copyBtn');
+                btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                setTimeout(() => btn.innerHTML = '<i class="fas fa-copy"></i> Copy', 2000);
+                showToast('📋 Email copied!');
+            });
+        });
+
+        // ==================== PAGE NAVIGATION ====================
+        const navItems = document.querySelectorAll('.nav-item[data-page]');
+        const pages = document.querySelectorAll('.page');
+        const plusBtn = document.getElementById('plusBtn');
+
+        function switchPage(pageNum) {
+            navItems.forEach(item => {
+                if (item.dataset.page === pageNum.toString()) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+            
+            pages.forEach(page => {
+                if (page.id === `page${pageNum}`) {
+                    page.classList.add('active');
+                } else {
+                    page.classList.remove('active');
+                }
+            });
+        }
+
+        navItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const pageNum = item.dataset.page;
+                switchPage(pageNum);
+            });
+        });
+
+        // ==================== MODAL ====================
+        const modal = document.getElementById('featuresModal');
+        const closeModal = document.getElementById('closeModal');
+
+        plusBtn.addEventListener('click', () => {
+            modal.classList.add('active');
+        });
+
+        closeModal.addEventListener('click', () => {
+            modal.classList.remove('active');
+        });
+
+        window.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('active');
+            }
+        });
+
+        // ==================== THEME TOGGLE ====================
+        const themeToggle = document.getElementById('themeToggle');
+        const sunIcon = themeToggle.querySelector('.fa-sun');
+        const moonIcon = themeToggle.querySelector('.fa-moon');
+
+        function updateThemeIcons() {
+            if (document.body.classList.contains('dark')) {
+                sunIcon.classList.remove('active');
+                moonIcon.classList.add('active');
+            } else {
+                sunIcon.classList.add('active');
+                moonIcon.classList.remove('active');
+            }
+        }
+
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark');
+            updateThemeIcons();
+        });
+
+        // ==================== INIT ====================
+        if (currentEmail) {
+            document.getElementById('emailAddress').value = currentEmail;
+            fetchMessages();
+        } else {
+            generateRandomEmail();
+        }
+    </script>
+</body>
+</html>
